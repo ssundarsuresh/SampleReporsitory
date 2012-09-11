@@ -1,0 +1,43 @@
+--country and date wise DAU
+select game_event.thedate,count(distinct game_event.userid) as dau, customer_profile.country from game_event join customer_profile on  (game_event.userid=customer_profile.user_id) group by game_event.thedate,customer_profile.country;
+--Gender and date wise DAU
+select game_event.thedate,count(distinct game_event.userid) as dau, customer_profile.gender from game_event join customer_profile on  (game_event.userid=customer_profile.user_id) group by game_event.thedate,customer_profile.gender;
+--Date wise DAU
+select game_event.thedate,count(distinct game_event.userid) as dau from game_event group by game_event.thedate;
+--Date wise Revenue
+select txt_date,sum(amount) from revenue_tx group by txt_date;
+--ARPDAU
+select dailyusers.daudate,dailyusers.dau,dailyrevenue.revenue,dailyrevenue.revenue/dailyusers.dau as arpdau from
+(select game_event.thedate as daudate,count(distinct game_event.userid) as dau from game_event group by game_event.thedate) dailyusers join
+(select txt_date as txtdate,sum(amount) as revenue from revenue_tx group by txt_date) dailyrevenue
+on (dailyusers.daudate=dailyrevenue.txtdate);
+
+-------------------------------------
+Dynamic partition
+-------------------------------------
+create table game_evt_part4
+(uid int, atevent string, atlevel int, gold int, xp int)
+partitioned by (thedate string)
+row format delimited fields terminated by '\t';
+
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.exec.dynamic.partition=true;
+
+INSERT OVERWRITE TABLE game_evt_part4 PARTITION (thedate)
+SELECT userid,evt_name,at_level,gold,xp,thedate FROM game_event;
+-------------------------------------
+queries to be run on partitioned tables
+--------------------------------------
+--country and date wise DAU
+select game_evt_part4.thedate,count(distinct game_evt_part4.uid) as dau, customer_profile.country from game_evt_part4 join customer_profile on  (game_evt_part4.uid=customer_profile.user_id) group by game_evt_part4.thedate,customer_profile.country;
+--Gender and date wise DAU
+select game_evt_part4.thedate,count(distinct game_evt_part4.uid) as dau, customer_profile.gender from game_evt_part4 join customer_profile on  (game_evt_part4.uid=customer_profile.user_id) group by game_evt_part4.thedate,customer_profile.gender;
+--Date wise DAU
+select game_evt_part4.thedate,count(distinct game_evt_part4.uid) as dau from game_evt_part4 group by game_evt_part4.thedate;
+--Date wise Revenue
+select txt_date,sum(amount) from revenue_tx group by txt_date;
+--ARPDAU
+select dailyusers.daudate,dailyusers.dau,dailyrevenue.revenue,dailyrevenue.revenue/dailyusers.dau as arpdau from
+(select game_evt_part4.thedate as daudate,count(distinct game_evt_part4.uid) as dau from game_evt_part4 group by game_evt_part4.thedate) dailyusers join
+(select txt_date as txtdate,sum(amount) as revenue from revenue_tx group by txt_date) dailyrevenue
+on (dailyusers.daudate=dailyrevenue.txtdate);
